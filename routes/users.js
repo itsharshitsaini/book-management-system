@@ -8,4 +8,4 @@ const userController = require("../controllers/userController");
 
 router.post('/login',   userValidator.login,     userController.login);
 router.post('/signin',  userValidator.signin,   userController.signin);
-router.post('/refresh-token',   userController.refreshToken);
+router.post('/refresh-token',   userValidator.signin,   userController.refreshToken);

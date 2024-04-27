@@ -2,31 +2,20 @@
 
 const express = require('express');
 const router = express.Router();
+const bookController = require("../controllers/booksController");
+const bookValidator = require("../validators/bookValidtor");
+const auth = require("../middleware/auth");
 
-// GET request to fetch all books
-router.get('/', (req, res) => {
-  // Logic to fetch all books from the database
-  res.send('List of all books');
-});
+// GET 
+router.get('/get_books',  bookValidator.getBook, auth.decodeToken ,  bookController.getBook);
 
 // POST request to add a new book
-router.post('/', (req, res) => {
-  // Logic to add a new book to the database
-  res.send('Book added');
-});
+router.post('/add_book',  bookValidator.addBook, auth.decodeToken ,  bookController.addBook);
 
 // PUT request to update a book
-router.put('/:id', (req, res) => {
-  const bookId = req.params.id;
-  // Logic to update the book with ID bookId in the database
-  res.send(`Book with ID ${bookId} updated`);
-});
+router.put('/update_book', bookValidator.updateBook, auth.decodeToken, bookController.updateBook);
 
 // DELETE request to delete a book
-router.delete('/:id', (req, res) => {
-  const bookId = req.params.id;
-  // Logic to delete the book with ID bookId from the database
-  res.send(`Book with ID ${bookId} deleted`);
-});
+router.delete('/delete_book', bookValidator.deleteBook, auth.decodeToken, bookController.deleteBook);
 
 module.exports = router;

@@ -1,11 +1,11 @@
 const _ = require('underscore');
-const responses = require('../reponses');
+const responses = require('../utility/reponses');
 const userService = require("../services/userService");
 const commonFunctions = require('../utility/commonFunctions');
 
 exports.signin = async (req, res) => {
     try {
-        const { username, name, age, email } = req.body;
+        const { username, name, age, email, password } = req.body;
         const userDetails = await userService.getUser({
             username: username,
             email: email
@@ -20,15 +20,19 @@ exports.signin = async (req, res) => {
         const accessToken = await commonFunctions.generateAccessToken(user.userId);
         const refreshToken = await commonFunctions.generateRefreshToken(user.userId);
 
+        const refreshTokenHash = await commonFunctions.createArgon2Hash(refreshToken);
+        const passwordHash = await commonFunctions.createArgon2Hash(password);
+
         await userService.addUser({
             username: username,
             name: name,
             email: email,
             age: age,
-            refresh_token: refreshToken
+            refresh_token: refreshTokenHash,
+            password : passwordHash
         });
 
-        return responses.sendActionCompleteResponse(res, {
+        return responses.actionCompleteResponse(res, {
             refreshToken,
             accessToken
         });
@@ -44,9 +48,12 @@ exports.signin = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { username, password} = req.body;
+
+        const passwordHash = await commonFunctions.createArgon2Hash(password);
+
         const userDetails = await userService.getUser({
             username: username,
-            password: password
+            password: passwordHash
         });
 
         if (_.isEmpty(userDetails)) {
@@ -56,14 +63,14 @@ exports.login = async (req, res) => {
         const accessToken = await commonFunctions.generateAccessToken(user.userId);
         const refreshToken = await commonFunctions.generateRefreshToken(user.userId);
 
-        await userService.addUser({
-            update_items: {
-                refresh_token: refreshToken
-            },
-            user_id: userDetails.user_id
+        const refreshTokenHash = await commonFunctions.createArgon2Hash(refreshToken);
+
+        await userService.updateRefreshToken({
+                refresh_token: refreshTokenHash,
+                user_id: userDetails.user_id
         });
 
-        return responses.sendActionCompleteResponse(res, {
+        return responses.actionCompleteResponse(res, {
             refreshToken,
             accessToken
         });
@@ -77,28 +84,20 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
     try {
-      const { refreshToken } = req.body;
-  
-      const userId = await commonFunctions.verifyRefreshToken(refreshToken);
-
-      if (!userId) {
-        return responses.sendResponse(res, 'Invalid refresh token', 401);
-      }
-  
-      // Get the user details from the database
-      const userDetails = await userService.getUser({ userId });
-  
-      // Check if the user exists
-      if (!userDetails) {
-        return responses.sendResponse(res, 'User not found', 404);
-      }
-  
-      const newAccessToken = await commonFunctions.generateAccessToken(userId);
-  
-      return responses.sendActionCompleteResponse(res, {
-        accessToken: newAccessToken
-      });
+        const { refreshToken } = req.body;
+        const token = await commonFunctions.verifyRefreshToken(refreshToken);
+        if (!token) {
+            return responses.sendResponse(res, 'Invalid refresh token', 401);
+        }
+        const userDetails = await userService.getUser({ userId });
+        if (!userDetails) {
+            return responses.sendResponse(res, 'User not found', 404);
+        }
+        const newAccessToken = await commonFunctions.generateAccessToken(userId);
+        return responses.actionCompleteResponse(res, {
+            accessToken: newAccessToken
+        });
     } catch (error) {
-      return responses.sendResponse(res, error.message, 500);
+        return responses.sendResponse(res, error.message, 500);
     }
 };

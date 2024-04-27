@@ -1,5 +1,5 @@
 const joi = require('joi');
-const responses = require('../reponses');
+const responses = require('../utility/reponses');
 
 
 // Define the schema for login validation
@@ -26,9 +26,31 @@ exports.login = (req, res, next) => {
     if (validationResult) {
         next();
     }
-
 };
 
+exports.signin = (req, res, next) => {
+    const loginSchema = Joi.object({
+        name : joi.string().required().trim().min(2).max(30),
+        username: joi.string().required().trim().min(6).max(15),
+        password: joi.string().required().trim().min(6).max(15)
+    });
+    const validationResult =  validateFields(req,res,loginSchema);
+    if (validationResult) {
+        next();
+    }
+};
+
+exports.refreshToken = (req, res, next) => {
+    const loginSchema = Joi.object({
+        name : joi.string().required().trim().min(2).max(30),
+        username: joi.string().required().trim().min(6).max(15),
+        password: joi.string().required().trim().min(6).max(15)
+    });
+    const validationResult =  validateFields(req,res,loginSchema);
+    if (validationResult) {
+        next();
+    }
+};
 
 validateFields =  (req, res, schema) => {
     console.log({REQUEST_BODY: req});

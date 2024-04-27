@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
 
+require('dotenv').config();
+
 // Import routers for different features
 const booksRouter = require('./routes/books');
 const usersRouter = require('./routes/users');
