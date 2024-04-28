@@ -19,7 +19,7 @@ Node.js application for Book management.
 Clone the project
 
 ```bash
-  gh repo clone itsharshitsaini/book-management-system
+  git clone https://github.com/itsharshitsaini/book-management-system.git
 ```
 
 Go to the project directory
