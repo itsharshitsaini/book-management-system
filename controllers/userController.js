@@ -2,72 +2,75 @@ const _ = require('underscore');
 const responses = require('../utility/reponses');
 const userService = require("../services/userService");
 const commonFunctions = require('../utility/commonFunctions');
+const responseFlags = require("../utility/constants").responseFlags;
+const responseMessages = require("../utility/constants").responseMessages;
 
 exports.signin = async (req, res) => {
     try {
         const { username, name, age, email, password } = req.body;
-        const userDetails = await userService.getUser({
+        const userDetails = await userService.getExistingUser({
             username: username,
             email: email
         });
 
         if (!_.isEmpty(userDetails)) {
-            // check if email in use or username in use 
-            let msg = "user already exist";
-            return responses.sendResponse(res, "user already exist", 409);
+            let message;
+            if (userDetails[0].username == username) {
+                message = responseMessages.USERNAME_EXIST;
+            }
+            else message = responseMessages.EMAIL_EXIST;
+            return responses.sendResponse(res, message, responseFlags.CONFLICT);
         }
+        const userId = await userService.getUserID();
+        const accessToken = await commonFunctions.generateAccessToken(userId);
+        const refreshToken = await commonFunctions.generateRefreshToken(userId);
 
-        const accessToken = await commonFunctions.generateAccessToken(user.userId);
-        const refreshToken = await commonFunctions.generateRefreshToken(user.userId);
-
-        const refreshTokenHash = await commonFunctions.createArgon2Hash(refreshToken);
-        const passwordHash = await commonFunctions.createArgon2Hash(password);
+        const refreshTokenHash = await commonFunctions.generateArgon2Hash(refreshToken);
+        const passwordHash = await commonFunctions.generateArgon2Hash(password);
 
         await userService.addUser({
+            user_id: userId.user_id + 1,
             username: username,
             name: name,
             email: email,
             age: age,
             refresh_token: refreshTokenHash,
-            password : passwordHash
-        });
-
-        return responses.actionCompleteResponse(res, {
-            refreshToken,
-            accessToken
-        });
-
-    }
-    catch (error) {
-        return responses.sendResponse(res, error || "unable to add user", 409);
-    }
-} 
-
-// TODO: HASH THE PASSWORDS AND TOKENS 
-
-exports.login = async (req, res) => {
-    try {
-        const { username, password} = req.body;
-
-        const passwordHash = await commonFunctions.createArgon2Hash(password);
-
-        const userDetails = await userService.getUser({
-            username: username,
             password: passwordHash
         });
 
-        if (_.isEmpty(userDetails)) {
-            return responses.sendResponse(res, "check password or username");
-        }
-        
-        const accessToken = await commonFunctions.generateAccessToken(user.userId);
-        const refreshToken = await commonFunctions.generateRefreshToken(user.userId);
+        return responses.actionCompleteResponse(res, {
+            refreshToken,
+            accessToken
+        });
+    }
+    catch (error) {
+        console.log(error);
+        return responses.sendResponse(res, error.message);
+    }
+}
 
-        const refreshTokenHash = await commonFunctions.createArgon2Hash(refreshToken);
+exports.login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        let userDetails = await userService.getUser({
+            username: username
+        });
+        userDetails = userDetails[0];
+        if (_.isEmpty(userDetails)) {
+            return responses.sendError(res, responseFlags.UNAUTHORIZED, responseMessages.UNAUTHORIZED);
+        }
+
+        await commonFunctions.verifyArgon2Hash({ hash: userDetails.password, word: password });
+        let tokenObj = { user_id: userDetails.user_id };
+        const accessToken = await commonFunctions.generateAccessToken(tokenObj);
+        const refreshToken = await commonFunctions.generateRefreshToken(tokenObj);
+
+        const refreshTokenHash = await commonFunctions.generateArgon2Hash(refreshToken);
 
         await userService.updateRefreshToken({
-                refresh_token: refreshTokenHash,
-                user_id: userDetails.user_id
+            refresh_token: refreshTokenHash,
+            user_id: userDetails.user_id
         });
 
         return responses.actionCompleteResponse(res, {
@@ -76,7 +79,8 @@ exports.login = async (req, res) => {
         });
     }
     catch (error) {
-        return responses.sendResponse(res, error || "unable to add user", 409);
+        console.log(error);
+        return responses.sendError(res, error);
     }
 };
 
@@ -84,20 +88,19 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
-        const token = await commonFunctions.verifyRefreshToken(refreshToken);
-        if (!token) {
-            return responses.sendResponse(res, 'Invalid refresh token', 401);
-        }
-        const userDetails = await userService.getUser({ userId });
-        if (!userDetails) {
-            return responses.sendResponse(res, 'User not found', 404);
-        }
-        const newAccessToken = await commonFunctions.generateAccessToken(userId);
+        const { refresh_token: refreshToken, username: username } = req.body;
+        let userDetails = await userService.getUser({
+            username: username
+        });
+        userDetails = userDetails[0];
+        await commonFunctions.verifyArgon2Hash({ hash: userDetails.refresh_token, word: refreshToken });
+        let tokenObj = { user_id: userDetails.user_id };
+        const newAccessToken = await commonFunctions.generateAccessToken(tokenObj);
         return responses.actionCompleteResponse(res, {
-            accessToken: newAccessToken
+            access_token: newAccessToken
         });
     } catch (error) {
-        return responses.sendResponse(res, error.message, 500);
+        console.log(error);
+        return responses.sendError(res, error);
     }
 };

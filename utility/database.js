@@ -1,9 +1,12 @@
 const mysql = require('mysql2');
 
-const dbHandler = await mysql.createPool({
-    host: process.env.DB_HOST,
-    database: process.env.DB,
-    user: process.env.USER,
-  });
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  namedPlaceholders: true,
+  connectionLimit: 10,
+});
 
-module.exports = dbHandler;
+module.exports = pool.promise();

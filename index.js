@@ -3,14 +3,15 @@ const app = express();
 
 require('dotenv').config();
 
-// Import routers for different features
+app.get('/ping', (req, res) => res.send("server is up"))
+app.use(express.json());
+
 const booksRouter = require('./routes/books');
 const usersRouter = require('./routes/users');
 
-// Use routers for their respective paths
-app.use('/books', booksRouter);
 
 app.use('/users', usersRouter);
+app.use('/books', booksRouter);
 
-// Start the server
-app.listen(3000, () => console.log("Listening on port 3000"));
+
+app.listen(process.env.PORT, () => console.log(`Listening on port ${process.env.PORT}`));

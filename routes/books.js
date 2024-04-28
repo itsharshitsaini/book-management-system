@@ -6,16 +6,15 @@ const bookController = require("../controllers/booksController");
 const bookValidator = require("../validators/bookValidtor");
 const auth = require("../middleware/auth");
 
-// GET 
-router.get('/get_books',  bookValidator.getBook, auth.decodeToken ,  bookController.getBook);
 
-// POST request to add a new book
-router.post('/add_book',  bookValidator.addBook, auth.decodeToken ,  bookController.addBook);
+router.use(auth.decodeToken);
 
-// PUT request to update a book
-router.put('/update_book', bookValidator.updateBook, auth.decodeToken, bookController.updateBook);
+router.get('/get_books', bookValidator.getBook, bookController.getBook);
 
-// DELETE request to delete a book
-router.delete('/delete_book', bookValidator.deleteBook, auth.decodeToken, bookController.deleteBook);
+router.post('/add_book', bookValidator.addBook, bookController.addBook);
+
+router.patch('/update_book', bookValidator.updateBook, bookController.updateBook);
+
+router.delete('/delete_book', bookValidator.deleteBook, bookController.deleteBook);
 
 module.exports = router;
